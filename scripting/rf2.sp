@@ -264,6 +264,7 @@ bool g_bDontRemoveWearable[MAX_EDICTS];
 bool g_bItemWearable[MAX_EDICTS];
 bool g_bEntityGlowing[MAX_EDICTS];
 bool g_bReflectCheck[MAXPLAYERS][MAX_EDICTS];
+bool g_bRocketRegenToggle[MAX_EDICTS];
 float g_flBusterSpawnTime;
 float g_flProjectileForcedDamage[MAX_EDICTS];
 float g_flSentryNextLaserTime[MAX_EDICTS];
@@ -430,6 +431,7 @@ ConVar g_cvStage1StartingMap;
 ConVar g_cvAggressiveRestarting;
 ConVar g_cvGamePlayedCount;
 ConVar g_cvEnableGiantPainSounds;
+ConVar g_cvMaxBots;
 ConVar g_cvDebugNoMapChange;
 ConVar g_cvDebugShowDifficultyCoeff;
 ConVar g_cvDebugDontEndGame;
@@ -4156,6 +4158,7 @@ public Action Timer_PlayerHud(Handle timer)
 			if (!g_bGracePeriod)
 			{
 				bool tanksLeft = g_iTanksKilledObjective < g_iTankKillRequirement;
+				/*
 				if (IsValidEntity2(g_iPlayerLastAttackedTank[i]))
 				{
 					RF2_TankBoss tank = RF2_TankBoss(g_iPlayerLastAttackedTank[i]);
@@ -4176,7 +4179,8 @@ public Action Timer_PlayerHud(Handle timer)
 						}
 					}
 				}
-				else if (g_bTankBossMode)
+				*/
+				if (g_bTankBossMode)
 				{
 					g_iPlayerLastAttackedTank[i] = INVALID_ENT;
 					if (!tanksLeft)
@@ -4210,14 +4214,14 @@ public Action Timer_PlayerHud(Handle timer)
 						FloatAbs(g_flPlayerShieldRegenTime[i]-GetGameTime()));
 				}
 			}
-
+			
 			if (PlayerHasItem(i, Item_PointAndShoot) && g_iPlayerFireRateStacks[i] > 0)
 			{
 				Format(miscText, sizeof(miscText), "%t", "AttackBuffStacks", miscText,
 					g_iPlayerFireRateStacks[i], CalcItemModInt(i, Item_PointAndShoot, 0));
 			}
 
-			bool hardHat = PlayerHasItem(i, Item_ApertureHat);
+			bool hardHat = false;//PlayerHasItem(i, Item_ApertureHat);
 			bool horace = PlayerHasItem(i, Item_Horace);
 			if (hardHat || horace)
 			{
@@ -4241,7 +4245,7 @@ public Action Timer_PlayerHud(Handle timer)
 						}
 					}
 				}
-
+				
 				if (hardHat)
 				{
 					float time = fmax(0.0, g_flPlayerHardHatLastResistTime[i]+GetItemMod(Item_ApertureHat, 1)-GetTickedTime());
@@ -4257,6 +4261,7 @@ public Action Timer_PlayerHud(Handle timer)
 				}
 			}
 			
+			/*
 			if (PlayerHasItem(i, Item_LilBitey))
 			{
 				float time = fmax(0.0, g_flPlayerLifestealTime[i]-GetTickedTime());
@@ -4265,13 +4270,16 @@ public Action Timer_PlayerHud(Handle timer)
 					Format(miscText, sizeof(miscText), "%t", "Lifesteal", miscText, time);
 				}
 			}
-
+			*/
+			
+			/*
 			if (GetTickedTime() < g_flPlayerHawkHasteCooldown[i]
 				&& PlayerHasItem(i, ItemSoldier_HawkWarrior) && CanUseCollectorItem(i, ItemSoldier_HawkWarrior))
 			{
 				float time = FloatAbs(GetTickedTime()-g_flPlayerHawkHasteCooldown[i]);
 				Format(miscText, sizeof(miscText), "%t", "HawkHasteCooldown", miscText, time);
 			}
+			*/
 			
 			TFClassType class = TF2_GetPlayerClass(i);
 			if (class == TFClass_Spy && g_flPlayerVampireSapperCooldown[i] > 0.0)
@@ -6285,6 +6293,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 	g_bItemWearable[entity] = false;
 	g_bCashBomb[entity] = false;
 	g_bEntityGlowing[entity] = false;
+	g_bRocketRegenToggle[entity] = false;
 	for (int i = 1; i < MAXPLAYERS; i++)
 	{
 		g_bReflectCheck[i][entity] = false;
@@ -6346,6 +6355,10 @@ public void OnEntityCreated(int entity, const char[] classname)
 		SDKHook(entity, SDKHook_OnTakeDamage, Hook_BuildingOnTakeDamage);
 		SDKHook(entity, SDKHook_OnTakeDamagePost, Hook_BuildingOnTakeDamagePost);
 		CreateTimer(0.5, Timer_BuildingHealthRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		if (strcmp2(classname, "obj_sentrygun"))
+		{
+			CreateTimer(6.0, Timer_SentryAmmoRegen, EntIndexToEntRef(entity), TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+		}
 	}
 	else if (IsNPC(entity))
 	{
